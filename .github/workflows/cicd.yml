@@ -26,19 +26,42 @@ jobs:
       - name: Make Gradle Wrapper executable
         run: chmod +x ./gradlew
 
-      - name: gradlew bootJar
-        run: ./gradlew bootJar
-
-      - name: copy jar to server
-        uses: appleboy/scp-action@master
+      # gradle caching - 빌드 시간 향상
+      - name: Gradle Caching
+        uses: actions/cache@v3
         with:
-         host: ${{ secrets.SSH_HOST }}
-         username: ubuntu
-         key: ${{ secrets.SSH_KEY }}
-         port: 22
-         source: "./build/libs/*.jar"
-         target: "~"
-         strip_components: 2
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build with Gradle
+        run: ./gradlew build -x test
+
+      # docker build & push to production
+      - name: Docker build & push
+        if: contains(github.ref, 'master')
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker build -f Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/docker-shop .
+          docker push ${{ secrets.DOCKER_USERNAME }}/docker-shop
+
+      - name: Deploy to prod
+        uses: appleboy/ssh-action@master
+        id: deploy-prod
+        if: contains(github.ref, 'main')
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_KEY }}
+          envs: GITHUB_SHA
+          script: |
+            sudo docker ps
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/docker-shop
+            sudo docker run -d -p 8082:8082 ${{ secrets.DOCKER_USERNAME }}/docker-shop
+            sudo docker image prune -f
 
       - name: SSH Commands
         uses: appleboy/ssh-action@v0.1.6
@@ -57,6 +80,5 @@ jobs:
               docker stop myapp
               docker rm myapp
             fi
-
             # 새로운 컨테이너 실행
             docker run -d --name myapp -p 80:80 myapp
