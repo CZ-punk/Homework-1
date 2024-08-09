@@ -1,0 +1,58 @@
+name: CI/CD for Spring Boot Application
+
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '21'
+
+      - name: Make Gradle Wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew clean build
+
+      - name: Copy JAR to EC2
+        env:
+          EC2_HOST: ${{ SSH_HOST }}
+          EC2_USER: ubuntu
+          EC2_SSH_KEY: ${{ SSH_KEY }}
+        run: |
+          echo "${{ SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          scp -o StrictHostKeyChecking=no -i private_key.pem target/my-select-shop.jar ubuntu@$SSH_HOST:/home/ubuntu/my-select-shop.jar
+
+      - name: Restart Application on EC2
+        env:
+          EC2_HOST: ${{ SSH_HOST }}
+          EC2_USER: ubuntu
+          EC2_SSH_KEY: ${{ SSH_KEY }}
+        run: |
+          echo "${{ SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$SSH_HOST << 'EOF'
+            # 기존 프로세스 종료
+            if pgrep -f "my-select-shop.jar" > /dev/null; then
+              echo "Stopping existing application..."
+              pkill -f my-select-shop.jar"
+            fi
+            # 새로운 JAR 파일 실행
+            echo "Starting new application..."
+            nohup java -jar /home/ubuntu/my-select-shop.jar > /home/$EC2_USER/app.log 2>&1 &
+          EOF
