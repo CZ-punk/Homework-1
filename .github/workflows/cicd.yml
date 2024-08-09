@@ -49,5 +49,14 @@ jobs:
           port: 22
           script_stop: true
           script: |
-            kill -9 $(ps -ef | grep java | head -n 1 | awk '{print $2}')
-            nohup java -jar *.jar 1> /dev/null 2>&1 &
+            # Docker 이미지 빌드
+            docker build -t myapp .
+
+            # 기존 컨테이너 종료 및 삭제
+            if [ "$(docker ps -q -f name=myapp)" ]; then
+              docker stop myapp
+              docker rm myapp
+            fi
+
+            # 새로운 컨테이너 실행
+            docker run -d --name myapp -p 80:80 myapp
