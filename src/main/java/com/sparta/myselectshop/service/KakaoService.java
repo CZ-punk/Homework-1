@@ -74,14 +74,16 @@ public class KakaoService {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "authorization_code");
         body.add("client_id", kakaoRestApiKey);
-        body.add("redirect_uri", host + "/api/user/kakao/callback");
+        body.add("redirect_uri", "http://ec2-43-202-3-191:ap-northeast-2:compute:amazonaws:com:8080/api/user/kakao/callback");
         body.add("code", code);
+
 
         RequestEntity<MultiValueMap<String, String>> requestEntity = RequestEntity
                 .post(uri)
                 .headers(headers)
                 .body(body);
 
+        log.info("여기에러인가?1");
         // HTTP 요청 보내기
         ResponseEntity<String> response = restTemplate.exchange(
                 requestEntity,
@@ -112,6 +114,7 @@ public class KakaoService {
                 .headers(headers)
                 .body(new LinkedMultiValueMap<>());
 
+        log.info("여기에러인가?2");
         // HTTP 요청 보내기
         ResponseEntity<String> response = restTemplate.exchange(
                 requestEntity,
