@@ -74,3 +74,4 @@ jobs:
             fi
             docker run -d --name myapp -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/docker
             sudo docker image prune -f
+            
