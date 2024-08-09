@@ -27,4 +27,4 @@ naver:
 kakao:
   restApiKey: d0fc91228613a4484fb3a76d45a74f92
 
-host: http://ec2-43-202-3-191:ap-northeast-2:compute:amazonaws:com:8080
+host: http://ec2-43-202-3-191.ap-northeast-2.compute.amazonaws.com:8080
